@@ -1,50 +1,51 @@
+// app/api/auth/[...nextauth]/route.ts
+
+import NextAuth, { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaClient } from "@prisma/client";
-import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcrypt";
-import NextAuth, { SessionStrategy } from "next-auth";
 
-const prisma  = new PrismaClient();
+const prisma = new PrismaClient();
 
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
 
-export const authOptions = {
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
 
-    providers: [
-        CredentialsProvider({
-            name:'credentials',
-            credentials: {
-                email: { label : "Email" , type: "text"},
-                password: { label:"Password", type:"password"}
-            },
-            async authorize(credentials) {
-                if(!credentials?.email || !credentials?.password) return null;
+        if (!user) return null;
 
-                const user = await prisma.user.findUnique({
-                    where:{email:credentials.email}
-                });
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
 
-                if(!user) return null;
+        if (!isValid) return null;
 
-                const isValid = await  bcrypt.compare(credentials.password, user.password);
-                if(!isValid) return null;
-
-                return {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email
-                };
-            },
-
-        }),
-    ],
-
-    session : { strategy : 'jwt' as SessionStrategy},
-    pages: {
-        signIn: '/signin'
-    },
-
-    secret : process.env.NEXTAUTH_SECRET
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        };
+      },
+    }),
+  ],
+  session: { strategy: "jwt" },
+  pages: {
+    signIn: "/signin",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
-
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST }
+
+export { handler as GET, handler as POST };
