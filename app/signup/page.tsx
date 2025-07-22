@@ -22,8 +22,8 @@ export default function SignUpPage() {
     try {
       await axios.post("/api/auth/signup", form);
       router.push("/signin");
-    } catch (error: any) {
-      console.error("Signup error:", error.response?.data || error.message);
+    } catch (error:unknown) {
+     console.error("Signup error:", error instanceof Error ? error.message : error);
     }
   };
 
